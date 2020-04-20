@@ -207,7 +207,7 @@ public struct Path {
     
     // checks if a node exists
     public var exists: Bool {
-        self.fileManager.fileExists(atPath: self.currentPath)
+        self.fileManager.fileExists(atPath: self.location)
     }
     
     // checks if a file exists and is a file
@@ -218,7 +218,7 @@ public struct Path {
     // checks if a file exists and it is a directory
     public var isDirectory: Bool {
         var isDir = ObjCBool(false)
-        if self.fileManager.fileExists(atPath: self.currentPath, isDirectory: &isDir) {
+        if self.fileManager.fileExists(atPath: self.location, isDirectory: &isDir) {
             return isDir.boolValue
         }
         return false
@@ -290,7 +290,7 @@ public struct Path {
         guard !self.isDirectory else {
             return
         }
-        try self.fileManager.createDirectory(atPath: self.currentPath,
+        try self.fileManager.createDirectory(atPath: self.location,
                                              withIntermediateDirectories: withIntermediateDirectories,
                                              attributes: attributes)
     }
@@ -382,12 +382,12 @@ public struct Path {
             FileManager error if directory could not be linked
      */
     public func chmod(_ permission: Int) throws {
-        try self.fileManager.setAttributes([.posixPermissions: permission], ofItemAtPath: self.currentPath)
+        try self.fileManager.setAttributes([.posixPermissions: permission], ofItemAtPath: self.location)
     }
     
     // returns posix permissions
     public var permissions: Int {
-        let attributes = try! self.fileManager.attributesOfItem(atPath: self.currentPath)
+        let attributes = try! self.fileManager.attributesOfItem(atPath: self.location)
         return attributes[.posixPermissions] as! Int
     }
 }
