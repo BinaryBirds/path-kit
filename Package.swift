@@ -5,7 +5,6 @@ let package = Package(
     name: "path-kit",
     products: [
         .library(name: "PathKit", targets: ["PathKit"]),
-        .library(name: "PathKitDynamic", type: .dynamic, targets: ["PathKit"])
     ],
     targets: [
         .target(name: "PathKit", dependencies: []),
