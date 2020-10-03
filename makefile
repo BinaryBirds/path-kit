@@ -1,3 +1,6 @@
+test:
+	swift test --enable-test-discovery --parallel
+
 docker-sh: docker-build
 	docker run -it swift-directory-kit-image /bin/bash
 

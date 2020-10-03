@@ -8,12 +8,16 @@
 
 import Foundation
 
-// a custom file node representation object
+/// a custom file node representation object
 public struct Path {
     
+    #if os(Windows)
+    public static let separator = "\\"
+    #else
     public static let separator = "/"
+    #endif
     
-    // Available directory paths
+    /// Available directory paths
     public enum SystemDirectory: CaseIterable {
         case application
         case demoApplication
@@ -43,7 +47,7 @@ public struct Path {
         case allLibraries
         case trash
 
-        // underlying file manager search path directory
+        /// underlying file manager search path directory
         fileprivate var searchPathDirectory: FileManager.SearchPathDirectory {
             switch self {
             case .application:
@@ -106,20 +110,20 @@ public struct Path {
     
     // MARK: - properties
 
-    // the path of the current directory
+    /// the path of the current directory
     private var currentPath: String
     
-    // FileManager instance used to perform operations
+    /// FileManager instance used to perform operations
     public var fileManager: FileManager = .default
 
-    // init with a new path
+    /// init with a new path
     public init(_ path: String) {
-        self.currentPath = path
+        currentPath = path
     }
 
-    // init with a new URL
+    /// init with a new URL
     public init(_ url: URL) {
-        self.currentPath = url.path
+        currentPath = url.path
     }
 
     /**
@@ -128,106 +132,91 @@ public struct Path {
        NOTE: only works on Apple platforms, it'll always return the home directory on any other operating system
     */
     public init(systemDirectory: SystemDirectory) {
-        self.currentPath = "~"
+        currentPath = "~"
         #if os(iOS) || os(macOS) || os(tvOS) || os(watchOS)
-        if let path =  NSSearchPathForDirectoriesInDomains(systemDirectory.searchPathDirectory, .allDomainsMask, true).first {
-            self.currentPath = path
+        if let path = NSSearchPathForDirectoriesInDomains(systemDirectory.searchPathDirectory, .allDomainsMask, true).first {
+            currentPath = path
         }
         #endif
     }
 
     // MARK: - static
     
-    //returns the home path
+    /// returns the home path
     public static var home: Self { .init("~") }
 
-    // returns the root path
+    /// returns the root path
     public static var root: Self { .init(Path.separator) }
     
-    // returns the current path
+    /// returns the current path
     public static var current: Self { .init(FileManager.default.currentDirectoryPath) }
 
     // MARK: - api
 
-    public var location: String {
-        NSString(string: self.currentPath).standardizingPath 
-    }
+    public var location: String { NSString(string: currentPath).standardizingPath }
     
-    // returns a file url with the path
-    public var url: URL {
-        .init(fileURLWithPath: self.location)
-    }
+    /// returns a file url with the path
+    public var url: URL { .init(fileURLWithPath: location) }
     
-    // returns the parent directory
+    /// returns the parent directory
     public var parent: Self {
-        return .init(self.url.deletingLastPathComponent().path)
+        return .init(url.deletingLastPathComponent().path)
     }
     
-    // returns the child directory representation
-    public func child(_ path: String) -> Self {
-        .init(self.currentPath + Path.separator + path)
-    }
+    /// returns the child directory representation
+    public func child(_ path: String) -> Self { .init(currentPath + Path.separator + path) }
 
-    // checks if the path is absolute
-    public var isAbsolute: Bool {
-        self.currentPath.hasPrefix(Path.separator)
-    }
+    /// checks if the path is absolute
+    public var isAbsolute: Bool { currentPath.hasPrefix(Path.separator) }
 
-    // checks if the path is relative
-    public var isRelative: Bool {
-        !self.isAbsolute
-    }
+    /// checks if the path is relative
+    public var isRelative: Bool { !isAbsolute }
 
-    // returns the file name
-    public var name: String {
-        if self.extension != nil {
-            return self.url.deletingLastPathComponent().lastPathComponent
+    /// returns the last component as name
+    public var name: String { url.lastPathComponent }
+    
+    /// returns the file name
+    public var basename: String {
+        if !name.contains(".") {
+            return name
         }
-        return self.url.lastPathComponent
+        return String(name.split(separator: ".").first!)
     }
 
-    // returns the file extension
+    /// returns the file extension
     public var `extension`: String? {
-        let ext = self.url.pathExtension
+        let ext = url.pathExtension
         guard !ext.isEmpty else {
             return nil
         }
         return ext
     }
     
-    // checks if the file node is hidden
-    public var isHidden: Bool {
-        self.url.lastPathComponent.hasPrefix(".")
-    }
+    /// checks if the file node is hidden
+    public var isHidden: Bool { name.hasPrefix(".") }
 
-    // checks if the node is visible
-    public var isVisible: Bool {
-        !self.isHidden
-    }
+    /// checks if the node is visible
+    public var isVisible: Bool { !isHidden }
     
-    // checks if a node exists
-    public var exists: Bool {
-        self.fileManager.fileExists(atPath: self.location)
-    }
+    /// checks if a node exists
+    public var exists: Bool { fileManager.fileExists(atPath: location) }
     
-    // checks if a file exists and is a file
-    public var isFile: Bool {
-        self.exists && !self.isDirectory && !self.isLink
-    }
+    /// checks if a file exists and is a file
+    public var isFile: Bool { exists && !isDirectory && !isLink }
 
-    // checks if a file exists and it is a directory
+    /// checks if a file exists and it is a directory
     public var isDirectory: Bool {
         var isDir = ObjCBool(false)
-        if self.fileManager.fileExists(atPath: self.location, isDirectory: &isDir) {
+        if fileManager.fileExists(atPath: location, isDirectory: &isDir) {
             return isDir.boolValue
         }
         return false
     }
 
-    // checks if resource is a link
+    /// checks if resource is a link
     public var isLink: Bool {
         #if os(iOS) || os(macOS) || os(tvOS) || os(watchOS)
-        let resourceValues = try! self.url.resourceValues(forKeys: [.isSymbolicLinkKey])
+        let resourceValues = try! url.resourceValues(forKeys: [.isSymbolicLinkKey])
         if let isSymbolicLink = resourceValues.isSymbolicLink {
             return isSymbolicLink
         }
@@ -235,21 +224,21 @@ public struct Path {
         return false
     }
 
-    // returns the original url of a symlink
+    /// returns the original url of a symlink
     public var linkPath: Path? {
-        guard self.isLink else {
+        guard isLink else {
             return nil
         }
-        return Path(self.url.resolvingSymlinksInPath())
+        return Path(url.resolvingSymlinksInPath())
     }
 
     // MARK: - children
     
     public func children() -> [Path] {
-        guard self.isDirectory else {
+        guard isDirectory else {
             return []
         }
-        let list = try? self.fileManager.contentsOfDirectory(at: self.url,
+        let list = try? fileManager.contentsOfDirectory(at: url,
                                                               includingPropertiesForKeys: nil,
                                                               options: [])
 
@@ -270,7 +259,7 @@ public struct Path {
         - Returns: New instance
      */
     public func add(_ path: String) throws -> Self {
-        let path = self.child(path)
+        let path = child(path)
         try path.create()
         return path
     }
@@ -287,10 +276,10 @@ public struct Path {
      */
     public func create(withIntermediateDirectories: Bool = true,
                        attributes: [FileAttributeKey : Any]? = nil) throws {
-        guard !self.isDirectory else {
+        guard !isDirectory else {
             return
         }
-        try self.fileManager.createDirectory(atPath: self.location,
+        try fileManager.createDirectory(atPath: location,
                                              withIntermediateDirectories: withIntermediateDirectories,
                                              attributes: attributes)
     }
@@ -302,10 +291,10 @@ public struct Path {
             FileManager error if directory could not be removed
      */
     public func delete() throws {
-        guard self.exists else {
+        guard exists else {
             return
         }
-        try self.fileManager.removeItem(at: self.url)
+        try fileManager.removeItem(at: url)
     }
     
     /**
@@ -322,7 +311,7 @@ public struct Path {
         if force, destination.exists {
             try destination.delete()
         }
-        try self.fileManager.copyItem(at: self.url, to: destination.url)
+        try fileManager.copyItem(at: url, to: destination.url)
     }
 
     /**
@@ -339,7 +328,7 @@ public struct Path {
         if force, destination.exists {
             try destination.delete()
         }
-        try self.fileManager.moveItem(at: self.url, to: destination.url)
+        try fileManager.moveItem(at: url, to: destination.url)
     }
 
     /**
@@ -356,7 +345,7 @@ public struct Path {
         if force, destination.exists {
             try destination.delete()
         }
-        try self.fileManager.createSymbolicLink(at: destination.url, withDestinationURL: self.url)
+        try fileManager.createSymbolicLink(at: destination.url, withDestinationURL: url)
     }
     
     /**
@@ -382,12 +371,12 @@ public struct Path {
             FileManager error if directory could not be linked
      */
     public func chmod(_ permission: Int) throws {
-        try self.fileManager.setAttributes([.posixPermissions: permission], ofItemAtPath: self.location)
+        try fileManager.setAttributes([.posixPermissions: permission], ofItemAtPath: location)
     }
     
-    // returns posix permissions
+    /// returns posix permissions
     public var permissions: Int {
-        let attributes = try! self.fileManager.attributesOfItem(atPath: self.location)
+        let attributes = try! fileManager.attributesOfItem(atPath: location)
         return attributes[.posixPermissions] as! Int
     }
 }
